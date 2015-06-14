@@ -1,0 +1,292 @@
+package es.us.aws;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.HashMap;
+import java.util.Iterator;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.*;
+
+import com.google.appengine.api.datastore.DatastoreService;
+import com.google.appengine.api.datastore.DatastoreServiceFactory;
+import com.google.appengine.api.datastore.Entity;
+import com.google.appengine.api.datastore.PreparedQuery;
+import com.google.appengine.api.datastore.Query;
+import com.google.gson.Gson;
+
+@SuppressWarnings("serial")
+public class SingerServlet extends HttpServlet {
+	
+	static HashMap<String,Singer> mapaSingers = new HashMap<String,Singer>();
+	DatastoreService datastore;
+	
+	public SingerServlet(){
+		super();
+		datastore = DatastoreServiceFactory.getDatastoreService();
+		
+		Query q = new Query("Singer");
+		PreparedQuery pq = datastore.prepare(q);
+		Iterator<Entity> it = pq.asIterator();
+		
+		while(it.hasNext()){
+			Entity e = it.next();
+			Singer s = entityToSinger(e);
+			mapaSingers.put(s.getName(), s);
+		}
+		
+	}	
+	public void doGet (HttpServletRequest req, HttpServletResponse res)
+			throws ServletException, IOException {
+		process(req,res);
+	}
+	public void doPost(HttpServletRequest req, HttpServletResponse res)
+			throws ServletException, IOException {
+		process(req,res);
+	}
+	public void doPut (HttpServletRequest req, HttpServletResponse res)
+			throws ServletException, IOException {
+
+		process(req,res);
+	}
+	public void doDelete (HttpServletRequest req, HttpServletResponse res)
+			throws ServletException, IOException {
+		process(req,res);
+	}
+	
+	public void process (HttpServletRequest req, HttpServletResponse res)
+			throws ServletException, IOException {
+		
+		PrintWriter out = res.getWriter();
+		
+		String method = req.getMethod();
+		String path = req.getPathInfo();
+	
+		System.out.println(req.getRequestURI() + " : ["+method+"|"+path+"] ");
+		
+		if (path != null){
+
+			String[] pathComponents = path.split("/");
+			String resource = pathComponents[1];
+			
+			System.out.println("Recurso con el nombre '"+resource+"'");		
+
+			procesarRecurso(method, pathComponents[1] , req, res);
+
+		}else{
+			System.out.println("Lista de recursos");		
+			procesarListaRecursos(method, req, res);
+		}
+		
+		out.close();
+	}
+	
+	@SuppressWarnings("static-access")
+	private void procesarListaRecursos(String method, HttpServletRequest req,
+			HttpServletResponse res) throws IOException {
+		
+		switch(method){
+			case "GET": getSingers(req, res);break;
+ 			case "POST": postSinger(req, res);break;
+			case "PUT": res.setStatus(res.SC_METHOD_NOT_ALLOWED);break;
+			case "DELETE": deleteSingers(req, res);break;
+			
+		}
+	}
+	
+	private void getSingers(HttpServletRequest req, HttpServletResponse res)throws IOException{
+		
+		Gson gson = new Gson();
+		String jsonString = gson.toJson(mapaSingers.values());
+		res.setContentType("text/json");
+		res.getWriter().println(jsonString);
+	}
+	
+	private void postSinger(HttpServletRequest req, HttpServletResponse res)throws IOException{
+		
+		Singer s = extractSinger(req);
+		
+		try{
+			if(!mapaSingers.containsKey(s.getName())){
+				
+				Entity e = singerToEntity(s);
+				mapaSingers.put(s.getName(), s);
+				datastore.put(e);
+				System. out. println("Cantante añadido");
+				
+			}else{
+				System. out. println("ERROR al añadir un cantante: Ya existe ");
+			}
+			
+		}catch(Exception ex){
+			System. out. println("ERROR al añadir un cantante: "+ex.getMessage());
+		}
+		
+	}
+	
+	private void deleteSingers(HttpServletRequest req, HttpServletResponse res)throws IOException{
+		try{
+			if(!mapaSingers.isEmpty()){
+				mapaSingers.clear();
+				Query q = new Query("Singer");
+				PreparedQuery pq = datastore.prepare(q);
+				Iterator<Entity> it = pq.asIterator();
+				while(it.hasNext()){
+					Entity e = it.next();
+					datastore.delete(e.getKey());
+				}
+				System. out. println("Todos los cantantes han sido eliminados");
+				
+			}else{
+				System. out. println("ERROR al borrar cantantes: No existe ninguno ");
+			}
+			mapaSingers.clear();
+			
+		}catch(Exception e){
+			System. out. println("ERROR al borrar canciones: "+e.getMessage());
+		}
+	}
+	
+	
+	@SuppressWarnings("static-access")
+	private void procesarRecurso(String method, String resource, HttpServletRequest req,
+			HttpServletResponse res) throws IOException {
+		
+		if(method == "POST"){
+			res.setStatus(res.SC_METHOD_NOT_ALLOWED);return;
+		}
+		
+		if(!mapaSingers.containsKey(resource)){
+			res.setStatus(res.SC_NOT_FOUND);
+			System. out. println("ERROR: Ningun nombre se corresponde con el Path");return;
+		}else{
+			switch(method){
+				case "GET": getSinger(resource, req, res);break;
+ 				case "PUT": updateSinger(resource, req, res);break;
+				case "DELETE": deleteSinger(resource);break;
+			}
+		}
+		
+	}
+	
+	private void getSinger(String resource, HttpServletRequest req, HttpServletResponse res)throws IOException{
+		Entity salida = null;
+		Singer s = null;
+		try{
+			salida = buscarSinger(resource);
+			s = entityToSinger(salida);
+			
+		}catch(Exception e){
+			System. out. println("ERROR al conseguir Singer: "+e.getMessage());
+		}
+		
+		Gson gson = new Gson();
+		String jsonString = gson.toJson(s);
+		res.setContentType("text/json");
+		res.getWriter().println(jsonString);
+	}
+
+	
+	@SuppressWarnings("static-access")
+	public void updateSinger(String resource, HttpServletRequest req, HttpServletResponse res) throws IOException {
+		Singer actualizada = extractSinger(req);
+		
+		if(actualizada == null){
+			res.setStatus(res.SC_BAD_REQUEST);return;
+		}else if(!actualizada.getName().equals(resource)){
+			res.setStatus(res.SC_FORBIDDEN);
+			System.out.println("ERROR: El Path no se corresponde con el nombre de Singer");return;
+		}else{
+			try{
+				
+				Entity e = buscarSinger(resource);
+				e.setProperty("name", actualizada.getName());
+				e.setProperty("gender", actualizada.getGender());
+				e.setProperty("numSongs", actualizada.getNumSongs());
+				datastore.put(e);
+				
+				mapaSingers.put(actualizada.getName(), actualizada);
+				
+				System. out. println("Singer actualizada: "+actualizada.toString());
+				
+			}catch(Exception e){
+				System.out.println("ERROR al actualizar: "+e.getMessage());
+			}	
+		}
+		
+		
+	}
+	
+	public void deleteSinger(String resource) throws IOException {
+		try{
+			Entity entidadABorrar = buscarSinger(resource);
+			datastore.delete(entidadABorrar.getKey());
+			mapaSingers.remove(resource);
+			System.out.println("Singer eliminada: "+resource);
+
+		}catch(Exception ex){
+			System.out.println("ERROR al borrar Singer: "+ex.getMessage());
+		}
+		
+	}
+	
+	//MÉTODOS ÚTILES
+	private Singer entityToSinger(Entity e){
+		Singer s = new Singer(
+				(String) e.getProperty("name"),
+				(String) e.getProperty("gender"),
+				(String) e.getProperty("label"),
+				(int) (long) e.getProperty("numSongs"));
+		return s;
+	}
+	
+	private Entity singerToEntity(Singer s){
+		Entity en = new Entity("Singer");
+		try{ 
+			en.setProperty("name",s.getName());
+			en.setProperty("gender",s.getGender());
+			en.setProperty("label",s.getLabel());
+			en.setProperty("numSongs",s.getNumSongs());
+		}catch(Exception e){
+			System.out.println("ERROR al crear Entity: "+e.getMessage()); 
+		}
+		
+		return en;
+	}
+	
+	private Entity buscarSinger(String resource){
+		
+		Query q = new Query("Singer").setFilter(new Query.FilterPredicate("name",Query.FilterOperator.EQUAL, resource));
+		PreparedQuery pq = datastore.prepare(q);
+		Entity e = pq.asSingleEntity();
+		return e;
+	}
+	
+	private Singer extractSinger(HttpServletRequest req) throws IOException{
+		
+		Singer s = null;
+		Gson gson = new Gson(); 
+		StringBuilder sb = new StringBuilder(); 
+		BufferedReader br = req.getReader(); 
+		String jsonString; 
+		
+		while( (jsonString = br.readLine()) != null ){ 
+			sb.append(jsonString); 
+		} 
+		
+		jsonString = sb.toString(); 
+		
+		try{ 
+			s = gson.fromJson(jsonString, Singer.class);
+			System.out.println("Cantante parseado "+s.toString()); 
+			
+		}catch(Exception e){ 
+			System.out.println("ERROR parseando Cantante: "+e.getMessage()); 
+		}
+		return s;
+	}
+	
+}
+
+

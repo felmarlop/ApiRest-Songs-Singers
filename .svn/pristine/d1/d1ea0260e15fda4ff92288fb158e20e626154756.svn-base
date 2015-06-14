@@ -1,0 +1,88 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+
+
+<head>
+
+<link rel="stylesheet" type="text/css" href="css/Songs.css">                                                     
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<!-- DataTables CSS -->
+<link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.6/css/jquery.dataTables.css">  
+<!-- jQuery -->
+<script type="text/javascript" charset="utf8" src="//code.jquery.com/jquery-1.10.2.min.js"></script> 
+<!-- DataTables -->
+<script type="text/javascript" charset="utf8" src="//cdn.datatables.net/1.10.6/js/jquery.dataTables.js"></script>
+<script src="js/jqSongs.js"></script>    
+
+</head>
+
+
+<body >
+
+<div  style="float:left; width: 25%;"><hr/></div>
+<div  style="float:right; width: 25%;"><hr/></div>
+<p class="titulo">Api Rest Canciones</p>
+<br/>
+
+<div class = "base">
+<fieldset>
+    <legend> API REST</legend>
+
+    <p >URL: <input id="url" type="text" size="30"  value="http://aws2015-songs.appspot.com/songs" /></p>
+
+
+    <div> Seleccione el Tipo de Petición
+    <fieldset class="elist">
+        <legend>Peticiones</legend>
+        <ul>
+		<li>GET <input name="method" type="radio" id="GET" checked="checked"/> </li>
+		<li>POST <input name="method" type="radio" id="POST" /> </li>
+		<li>PUT <input name="method" type="radio" id="PUT" /></li> 
+		<li>DELETE <input name="method" type="radio" id="DELETE" /></li> 
+ 	</ul>
+    </fieldset>
+    </div>
+
+	<br/>
+    <palign="right">Carga de Datos:<br />
+    <textarea id="payload"  style="width: 300px;" >{"name":"CancionPrueba","autor":"AutorPrueba","duracion":99}</textarea></p>
+
+
+	<br/>
+<div style="text-align: center;">
+    <span class= "btn" id="button">Enviar</span>
+</div>
+<div style="text-align: center; float:right;">
+    
+    	<fieldset>
+    		<lengend>Versión premium:</lengend>
+    		<select id="select">
+    			<option value="?user=proUser1">Yes</option>
+    			<option value="?user=basicUser1">No</option>
+    		</select>
+    	</fieldset>
+   
+</div>
+	
+	<br/><br/><hr/>
+
+	HTTP Status: <span id="status" class="info"></span> &nbsp;&nbsp;
+	<span id="mensaje" class="info"></span>
+	<br/><hr/>
+	
+</style>
+
+
+	<span id="data" class="detalle"></span> 
+	<br/><hr/>
+	<ul id="list" class="detalle"></ul> 
+	
+	<hr/>
+	Log: <span class="info" id="log"></span>
+
+
+</fieldset>
+</div>
+
+</body>
+</html>

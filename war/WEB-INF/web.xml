@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xmlns="http://java.sun.com/xml/ns/javaee"
+xmlns:web="http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
+http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" version="2.5">
+<servlet>
+ <servlet-name>SongServlet</servlet-name>
+ <servlet-class>es.us.aws.SongServlet</servlet-class>
+ </servlet>
+
+ <servlet-mapping>
+ <servlet-name>SongServlet</servlet-name>
+ <url-pattern>/songs/*</url-pattern>
+ </servlet-mapping>
+ <servlet>
+	<servlet-name>Singer</servlet-name>
+	<servlet-class>es.us.aws.SingerServlet</servlet-class>
+</servlet>
+<servlet-mapping>
+	<servlet-name>Singer</servlet-name>
+	<url-pattern>/singers/*</url-pattern>
+</servlet-mapping>
+
+<!--Filters-->
+	<servlet>
+        <servlet-name>AgreementsServlet</servlet-name>
+        <servlet-class>es.us.aws.AgreementsServlet</servlet-class>
+    </servlet>
+	<servlet-mapping>
+        <servlet-name>AgreementsServlet</servlet-name>
+        <url-pattern>/agreements/*</url-pattern>
+    </servlet-mapping>
+    
+    <filter>
+        <filter-name>AgreementFilter_AML</filter-name>
+        <filter-class>es.us.filters.AgreementFilter</filter-class>
+    </filter>
+	<filter-mapping>
+        <filter-name>AgreementFilter_AML</filter-name>
+        <url-pattern>/singers/*</url-pattern>
+        <dispatcher>REQUEST</dispatcher>
+        <dispatcher>ERROR</dispatcher>
+    </filter-mapping>
+
+
+
+</web-app>
+
+

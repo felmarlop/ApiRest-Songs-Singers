@@ -1,0 +1,298 @@
+package es.us.aws;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.HashMap;
+import java.util.Iterator;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.*;
+
+import com.google.appengine.api.datastore.DatastoreService;
+import com.google.appengine.api.datastore.DatastoreServiceFactory;
+import com.google.appengine.api.datastore.Entity;
+import com.google.appengine.api.datastore.PreparedQuery;
+import com.google.appengine.api.datastore.Query;
+import com.google.gson.Gson;
+
+@SuppressWarnings("serial")
+public class SongServlet extends HttpServlet {
+	
+	static HashMap<String,Song> mapaSongs = new HashMap<String,Song>();
+	DatastoreService datastore;
+	
+	public SongServlet(){
+		super();
+		datastore = DatastoreServiceFactory.getDatastoreService();
+		
+		Query q = new Query("Song");
+		PreparedQuery pq = datastore.prepare(q);
+		Iterator<Entity> it = pq.asIterator();
+		
+		while(it.hasNext()){
+			Entity e = it.next();
+			Song s = entityToSong(e);
+			mapaSongs.put(s.getName(), s);
+		}
+	}	
+	public void doGet (HttpServletRequest req, HttpServletResponse res)
+			throws ServletException, IOException {
+		process(req,res);
+	}
+	public void doPost(HttpServletRequest req, HttpServletResponse res)
+			throws ServletException, IOException {
+		process(req,res);
+	}
+	public void doPut (HttpServletRequest req, HttpServletResponse res)
+			throws ServletException, IOException {
+
+		process(req,res);
+	}
+	public void doDelete (HttpServletRequest req, HttpServletResponse res)
+			throws ServletException, IOException {
+		process(req,res);
+	}
+	
+	public void process (HttpServletRequest req, HttpServletResponse res)
+			throws ServletException, IOException {
+		
+		PrintWriter out = res.getWriter();
+		
+		String method = req.getMethod();
+		String path = req.getPathInfo();
+	
+		System.out.println(req.getRequestURI() + " : ["+method+"|"+path+"] ");
+		
+		if (path != null){
+
+			String[] pathComponents = path.split("/");
+			String resource = pathComponents[1];
+			
+			System.out.println("Recurso con el nombre '"+resource+"'");		
+
+			procesarRecurso(method, pathComponents[1] , req, res);
+
+		}else{
+			System.out.println("Lista de recursos");		
+			procesarListaRecursos(method, req, res);
+		}
+		
+		out.close();
+	}
+	
+	@SuppressWarnings("static-access")
+	private void procesarListaRecursos(String method, HttpServletRequest req,
+			HttpServletResponse res) throws IOException {
+		
+		switch(method){
+			case "GET": getSongs(req, res);break;
+ 			case "POST": postSong(req, res);break;
+			case "PUT": res.setStatus(res.SC_METHOD_NOT_ALLOWED);break;
+			case "DELETE": deleteSongs(req, res);break;
+			
+		}
+	}
+	
+	private void getSongs(HttpServletRequest req, HttpServletResponse res)throws IOException{
+		
+		Gson gson = new Gson();
+		String jsonString = gson.toJson(mapaSongs.values());
+		res.setContentType("text/json");
+		res.getWriter().println(jsonString);
+	}
+	
+	@SuppressWarnings("static-access")
+	private void postSong(HttpServletRequest req, HttpServletResponse res)throws IOException{
+		
+		Song s = extractSong(req);
+		
+		try{
+			if(!mapaSongs.containsKey(s.getName())){
+				
+				Entity e = songToEntity(s);
+				mapaSongs.put(s.getName(), s);
+				datastore.put(e);
+				System. out. println("Song añadida");
+				
+			}else{
+				res.setStatus(res.SC_NOT_ACCEPTABLE);
+				System. out. println("ERROR al añadir Song: Ya existe ");
+			}
+			
+		}catch(Exception ex){
+			res.setStatus(res.SC_INTERNAL_SERVER_ERROR);
+			System. out. println("ERROR al añadir Song: "+ex.getMessage());
+		}
+		
+	}
+	
+	@SuppressWarnings("static-access")
+	private void deleteSongs(HttpServletRequest req, HttpServletResponse res)throws IOException{
+		try{
+			if(!mapaSongs.isEmpty()){
+				mapaSongs.clear();
+				Query q = new Query("Song");
+				PreparedQuery pq = datastore.prepare(q);
+				Iterator<Entity> it = pq.asIterator();
+				while(it.hasNext()){
+					Entity e = it.next();
+					datastore.delete(e.getKey());
+				}
+				System. out. println("Todas las canciones han sido eliminadas");
+				
+			}else{
+				res.setStatus(res.SC_NOT_FOUND);
+				System. out. println("ERROR al borrar canciones: No existe ninguna ");
+			}
+			mapaSongs.clear();
+			
+		}catch(Exception e){
+			res.setStatus(res.SC_INTERNAL_SERVER_ERROR);
+			System. out. println("ERROR al borrar canciones: "+e.getMessage());
+		}
+	}
+	
+	
+	@SuppressWarnings("static-access")
+	private void procesarRecurso(String method, String resource, HttpServletRequest req,
+			HttpServletResponse res) throws IOException {
+		
+		if(method == "POST"){
+			res.setStatus(res.SC_METHOD_NOT_ALLOWED);return;
+		}
+		
+		if(!mapaSongs.containsKey(resource)){
+			res.setStatus(res.SC_NOT_FOUND);
+			System. out. println("ERROR: Ningun nombre se corresponde con el Path");return;
+		}else{
+			switch(method){
+				case "GET": getSong(resource, req, res);break;
+ 				case "PUT": updateSong(resource, req, res);break;
+				case "DELETE": deleteSong(resource);break;
+			}
+		}
+		
+	}
+	
+	@SuppressWarnings("static-access")
+	private void getSong(String resource, HttpServletRequest req, HttpServletResponse res)throws IOException{
+		Entity salida = null;
+		Song s = null;
+		try{
+			salida = buscarSong(resource);
+			s = entityToSong(salida);
+			
+		}catch(Exception e){
+			res.setStatus(res.SC_INTERNAL_SERVER_ERROR);
+			System. out. println("ERROR al conseguir Song: "+e.getMessage());
+		}
+		
+		Gson gson = new Gson();
+		String jsonString = gson.toJson(s);
+		res.setContentType("text/json");
+		res.getWriter().println(jsonString);
+	}
+
+	
+	@SuppressWarnings("static-access")
+	public void updateSong(String resource, HttpServletRequest req, HttpServletResponse res) throws IOException {
+		Song actualizada = extractSong(req);
+		
+		if(actualizada == null){
+			res.setStatus(res.SC_BAD_REQUEST);return;
+		}else if(!actualizada.getName().equals(resource)){
+			res.setStatus(res.SC_FORBIDDEN);
+			System.out.println("ERROR: El Path no se corresponde con el nombre de Song");return;
+		}else{
+			try{
+				
+				Entity e = buscarSong(resource);
+				e.setProperty("name", actualizada.getName());
+				e.setProperty("autor", actualizada.getAutor());
+				e.setProperty("duracion", actualizada.getDuracion());
+				datastore.put(e);
+				
+				mapaSongs.put(actualizada.getName(), actualizada);
+				
+				System. out. println("Song actualizada: "+actualizada.toString());
+				
+			}catch(Exception e){
+				res.setStatus(res.SC_INTERNAL_SERVER_ERROR);
+				System.out.println("ERROR al actualizar: "+e.getMessage());
+			}	
+		}
+		
+		
+	}
+	
+	public void deleteSong(String resource) throws IOException {
+		try{
+			Entity entidadABorrar = buscarSong(resource);
+			datastore.delete(entidadABorrar.getKey());
+			mapaSongs.remove(resource);
+			System.out.println("Song eliminada: "+resource);
+
+		}catch(Exception ex){
+			System.out.println("ERROR al borrar Song: "+ex.getMessage());
+		}
+		
+	}
+	
+	//MÉTODOS ÚTILES
+	private Song entityToSong(Entity e){
+		Song s = new Song(
+				(String) e.getProperty("name"),
+				(String) e.getProperty("autor"),
+				(int) (long) e.getProperty("duracion"));
+		return s;
+	}
+	
+	private Entity songToEntity(Song s){
+		Entity en = new Entity("Song");
+		try{ 
+			en.setProperty("name",s.getName());
+			en.setProperty("autor",s.getAutor());
+			en.setProperty("duracion",s.getDuracion());
+		}catch(Exception e){
+			System.out.println("ERROR al crear Entity: "+e.getMessage()); 
+		}
+		
+		return en;
+	}
+	
+	private Entity buscarSong(String resource){
+		
+		Query q = new Query("Song").setFilter(new Query.FilterPredicate("name",Query.FilterOperator.EQUAL, resource));
+		PreparedQuery pq = datastore.prepare(q);
+		Entity e = pq.asSingleEntity();
+		return e;
+	}
+	
+	private Song extractSong(HttpServletRequest req) throws IOException{
+		
+		Song s = null;
+		Gson gson = new Gson(); 
+		StringBuilder sb = new StringBuilder(); 
+		BufferedReader br = req.getReader(); 
+		String jsonString; 
+		
+		while( (jsonString = br.readLine()) != null ){ 
+			sb.append(jsonString); 
+		} 
+		
+		jsonString = sb.toString(); 
+		
+		try{ 
+			s = gson.fromJson(jsonString, Song.class);
+			System.out.println("Cancion parseada "+s.toString()); 
+			
+		}catch(Exception e){ 
+			System.out.println("ERROR parseando Song: "+e.getMessage()); 
+		}
+		return s;
+	}
+	
+}
+
+

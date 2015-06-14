@@ -1,0 +1,63 @@
+package aws.local;
+
+
+public class Singer {
+	String name = "";
+	String gender = "";
+	String label = "";
+	Integer numSongs = 0;
+
+	public Singer(){
+		super();
+		name = "";
+		gender = "";
+		label = "";
+		numSongs = 0;
+	}
+	
+	public Singer(String name, String gender,String label, Integer numSongs){
+		super();
+		this.name = name;
+		this.gender = gender;
+		this.label = label;
+		this.numSongs = numSongs;
+	}
+	
+	public String getName(){
+		return this.name;
+	}
+	
+	public String getGender(){
+		return this.gender;
+	}
+	
+	public String getLabel(){
+		return this.label;
+	}
+	
+	public Integer getNumSongs(){
+		return this.numSongs;
+	}
+	
+	public void setName(String newName){
+		this.name = newName;
+	}
+	
+	public void setGender(String newgender){
+		this.gender = newgender;
+	}
+	
+	public void setLabel(String label){
+		this.label = label;
+	}
+	
+	public void setNumSongs(Integer newnumSongs){
+		this.numSongs = newnumSongs;
+	}
+	@Override
+	public String toString() {
+		return "Singer [name=" + this.name + ", gender=" + this.gender + ", label=" + this.label + ", numSongs="
+				+ this.numSongs + "]";
+	}
+
+}
